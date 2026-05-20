@@ -1,4 +1,4 @@
-name: Build Docker and Scan with Snyk
+name: Build Docker image and Scan using snyk
 
 on:
   push:
@@ -7,44 +7,31 @@ on:
   workflow_dispatch:
 
 jobs:
-  docker-build-scan:
+  scan:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Build JAR
-        run: mvn clean package -DskipTests
+      - uses: actions/checkout@v4
 
       - name: Build Docker image
-        run: docker build -t my-java-app:latest .
+        run: docker build -t myapp:latest .
 
       - name: Install Snyk
         run: npm install -g snyk
 
-      - name: Authenticate Snyk
+      - name: Authenticate
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
-      - name: Scan Docker image
+      - name: Scan image
         continue-on-error: true
-        run: snyk container test my-java-app:latest --file=Dockerfile
+        run: snyk container test myapp:latest --file=Dockerfile
 
       - name: Generate report
         continue-on-error: true
-        run: snyk container test my-java-app:latest --file=Dockerfile --json > snyk-report.json
+        run: snyk container test myapp:latest --file=Dockerfile --json > snyk-report.json
 
       - name: Upload report
         uses: actions/upload-artifact@v4
         with:
           name: snyk-report
           path: snyk-report.json
-
-      - name: Monitor in Snyk dashboard
-        run: snyk container monitor my-java-app:latest --file=Dockerfile
